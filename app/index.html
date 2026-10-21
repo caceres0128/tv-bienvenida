@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Bienvenida</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    background: radial-gradient(circle at 30% 20%, #1d3b5c, #0a1220 70%); }
+  .wrap { height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 0 8vw; }
+  .hora { font-size: 2.2vw; opacity: .75; letter-spacing: .05em; }
+  h1 { font-size: 6.5vw; margin: .6vw 0 3.5vw; font-weight: 700; }
+  h1 span { color: #7cc4ff; }
+  .tarjetas { display: flex; }
+  .t { flex: 1; margin-right: 3vw; background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 1.6vw; padding: 2.4vw 2.8vw; }
+  .t:last-child { margin-right: 0; }
+  .et { font-size: 1.5vw; text-transform: uppercase; letter-spacing: .15em; opacity: .65; }
+  .valor { font-size: 4.6vw; font-weight: 700; margin: .8vw 0; }
+  .sub { font-size: 1.7vw; opacity: .85; }
+  .pie { position: absolute; bottom: 3vw; left: 8vw; font-size: 1.3vw; opacity: .45; }
+  .ia { position: absolute; top: 4vw; right: 6vw; width: 7vw; height: 7vw; border-radius: 50%;
+    border: .35vw solid #7cc4ff; box-shadow: 0 0 2vw #7cc4ff, inset 0 0 1.5vw #7cc4ff; }
+  .ia.habla { animation: p .7s ease-in-out infinite alternate; }
+  @keyframes p { from { transform: scale(.9); opacity: .6 } to { transform: scale(1.1); opacity: 1 } }
+</style>
+</head>
+<body>
+<div id="ia" class="ia"></div>
+<div class="wrap">
+  <div class="hora"><span id="fecha"></span> · <span id="reloj"></span></div>
+  <h1><span id="saludo" style="color:#fff"></span>, <span>Alejandro</span></h1>
+  <div class="tarjetas">
+    <div class="t"><div class="et">Dólar hoy (TRM)</div><div id="trm"><div class="sub">Cargando…</div></div></div>
+    <div class="t"><div class="et">Clima en Tunja</div><div id="clima"><div class="sub">Cargando…</div></div></div>
+  </div>
+</div>
+<div class="pie">Presiona Atrás en el control para continuar</div>
+
+<script>
+var LAT = 5.5353, LON = -73.3678;
+var DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var CLIMA = {0:['Despejado','☀️'],1:['Mayormente despejado','🌤️'],2:['Parcialmente nublado','⛅'],
+  3:['Nublado','☁️'],45:['Neblina','🌫️'],48:['Neblina','🌫️'],51:['Llovizna ligera','🌦️'],
+  53:['Llovizna','🌦️'],55:['Llovizna fuerte','🌧️'],61:['Lluvia ligera','🌦️'],63:['Lluvia','🌧️'],
+  65:['Lluvia fuerte','🌧️'],80:['Chubascos ligeros','🌦️'],81:['Chubascos','🌧️'],82:['Chubascos fuertes','⛈️'],
+  95:['Tormenta','⛈️'],96:['Tormenta con granizo','⛈️'],99:['Tormenta fuerte','⛈️']};
+
+function $(id) { return document.getElementById(id); }
+function pesos(n) {
+  var p = n.toFixed(2).split('.');
+  return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1];
+}
+function franja() { var h = new Date().getHours(); return h < 12 ? 'manana' : (h < 19 ? 'tarde' : 'noche'); }
+
+function reloj() {
+  var d = new Date(), h = d.getHours(), m = d.getMinutes(), ap = h < 12 ? 'AM' : 'PM';
+  h = h % 12 || 12;
+  $('fecha').textContent = DIAS[d.getDay()].charAt(0).toUpperCase() + DIAS[d.getDay()].slice(1) +
+    ' ' + d.getDate() + ' de ' + MESES[d.getMonth()];
+  $('reloj').textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+  $('saludo').textContent = {manana: 'Buenos días', tarde: 'Buenas tardes', noche: 'Buenas noches'}[franja()];
+}
+
+function getJSON(url, ok, fallo) {
+  var x = new XMLHttpRequest();
+  x.open('GET', url);
+  x.timeout = 10000;
+  x.onload = function () { try { ok(JSON.parse(x.responseText)); } catch (e) { fallo(); } };
+  x.onerror = x.ontimeout = fallo;
+  x.send();
+}
+
+function cargarTRM() {
+  getJSON('https://www.datos.gov.co/resource/32sa-8pi3.json?$limit=2&$order=vigenciadesde%20DESC',
+    function (d) {
+      var hoy = parseFloat(d[0].valor), ayer = d[1] ? parseFloat(d[1].valor) : hoy, c = hoy - ayer;
+      var color = c > 0 ? '#ff8a80' : '#69f0ae', fl = c > 0 ? '▲' : (c < 0 ? '▼' : '■');
+      $('trm').innerHTML = '<div class="valor">$' + pesos(hoy) + '</div>' +
+        '<div class="sub" style="color:' + color + '">' + fl + ' $' + pesos(Math.abs(c)) + ' vs. ayer</div>';
+    },
+    function () { $('trm').innerHTML = '<div class="sub">Sin conexión</div>'; });
+}
+
+function cargarClima() {
+  getJSON('https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+    '&timezone=America%2FBogota&forecast_days=1&current=temperature_2m,weather_code' +
+    '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    function (d) {
+      var c = d.current, dd = d.daily, w = CLIMA[c.weather_code] || ['Variable', '🌡️'];
+      $('clima').innerHTML = '<div class="valor">' + w[1] + ' ' + Math.round(c.temperature_2m) + '°C</div>' +
+        '<div class="sub">' + w[0] + ' · Máx ' + Math.round(dd.temperature_2m_max[0]) + '° · Mín ' +
+        Math.round(dd.temperature_2m_min[0]) + '° · Lluvia ' + dd.precipitation_probability_max[0] + '%</div>';
+    },
+    function () { $('clima').innerHTML = '<div class="sub">Sin conexión</div>'; });
+}
+
+function hablar() {
+  var ia = $('ia');
+  var a = new Audio('voz/' + franja() + '.mp3');
+  a.onplay = function () { ia.className = 'ia habla'; };
+  a.onended = function () { ia.className = 'ia'; };
+  var p = a.play();
+  if (p && p.catch) p.catch(function () {});
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.keyCode === 10009 || e.keyCode === 13) { // Atras u OK
+    try { window.history.back(); } catch (err) {}
+  }
+});
+
+reloj(); setInterval(reloj, 10000);
+cargarTRM(); cargarClima();
+setTimeout(hablar, 700);
+</script>
+</body>
+</html>

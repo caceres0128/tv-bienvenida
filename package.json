@@ -1,0 +1,9 @@
+{
+  "name": "tv-bienvenida",
+  "appName": "Bienvenida Alejandro",
+  "version": "1.0.0",
+  "description": "Pantalla de bienvenida con voz, dolar (TRM) y clima de Tunja. Corre en el TV sin PC.",
+  "packageType": "app",
+  "appPath": "app/index.html",
+  "keys": []
+}
